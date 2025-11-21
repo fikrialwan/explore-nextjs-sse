@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sendEventToClients } from './sse';
+import { sseManager } from '@/lib/sse-manager';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -21,7 +21,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     // Send to all connected SSE clients
-    const clientCount = sendEventToClients(eventData);
+    const clientCount = sseManager.sendEventToClients(eventData);
 
     return res.status(200).json({
       success: true,

@@ -1,10 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-
-interface SSEEvent {
-  type: string;
-  message: string;
-  timestamp: string;
-}
+import { sseManager } from "@/lib/sse-manager";
 
 // Disable response buffering for SSE
 export const config = {
@@ -13,9 +8,6 @@ export const config = {
     responseLimit: false,
   },
 };
-
-// Store active connections
-const clients = new Set<NextApiResponse>();
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
@@ -28,8 +20,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  // Add client to the set
-  clients.add(res);
+  // Add client to the manager
+  sseManager.addClient(res);
 
   // Send initial connection message
   res.write(
@@ -48,26 +40,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   // Handle client disconnect
   req.on("close", () => {
     clearInterval(heartbeatInterval);
-    clients.delete(res);
-    console.log("Client disconnected. Active connections:", clients.size);
+    sseManager.removeClient(res);
   });
 }
-
-// Export function to send events to all clients
-export function sendEventToClients(data: SSEEvent) {
-  const message = `data: ${JSON.stringify(data)}\n\n`;
-
-  clients.forEach((client) => {
-    try {
-      client.write(message);
-    } catch (error) {
-      console.error("Error sending to client:", error);
-      clients.delete(client);
-    }
-  });
-
-  return clients.size;
-}
-
-// Export clients for access from other modules
-export { clients };
